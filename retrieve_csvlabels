@@ -1,57 +1,57 @@
 # Load the required package
 library(flowCore)
 
-# Define the directory for the wsp file
-wspfile <- "path/to/wspfile.wsp"
+# Identify the files
+fcs_file = ""
+wsp_file = ""
+# A vector
+celltypes = ""
 
-# Define the directory for the FCS files
-fcs_files <- "/path/to/fcs_files"
-
-# This function returns a labels of identified cells in csv files
-
-csvlabels <- function(wspfile, fcs_files) {
-
+csvlabels = function(fcs_file, wsp_file, celltypes){
+  #check if file path exist
+  if (file.exists(fcs_file)) {
+    print("The .fcs file exists!")
+  } else {
+    print("The .fcs file does not exist.")
+  }
+  
+  if (file.exists(wsp_file)) {
+    print("The .wsp file exists!")
+  } else {
+    print("The .wsp file does not exist.")
+  }
+  
   # List all FCS files in the given directory
-  fcs_file <- list.files(fcs_files, pattern = ".fcs", full.names = TRUE, recursive = TRUE)
-  
-  
-  # Placeholder for the gating result since gatingResult is not defined
-  # Remove this line when you load the actual gating result
-  gatingResult <- list(matrix = matrix(data = c(TRUE, FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, FALSE), nrow = 4, ncol = 2))
-  colnames(gatingResult$matrix) <- c("Lymphocytes", "Single Cells")
-  
-  # Specify the cell types of interest for assigning one label per cell
-  cellTypes <- c("CD3+")
-  
-  # Check the number of cells assigned to each gate (assuming 'matrix' is in gatingResult)
-  cell_counts <- colSums(gatingResult$matrix)
-  print(cell_counts)
-  
-  # Count the number of TRUE values in the "Lymphocytes" column 
-  num_true <- sum(gatingResult$matrix[, "Lymphocytes"])
-  print(num_true)
-  
-  # Save subset of Lymphocytes data to CSV file
-  lymphocytes_file <- "path/to/lymphocytes.csv"
-  write.csv(gatingResult$matrix[, "Lymphocytes"], lymphocytes_file, row.names = FALSE)
+  fcs_files = list.files(fcs_file, pattern = ".fcs", recursive = TRUE)
+
+  # Parse the FlowJo workspace
+  gatingResult = GetFlowJoLabels(fcs_files, wsp_file,
+                                 cellTypes = celltypes,
+                                 getData = TRUE)
   
   # Define the column names to be included in the subset
-  selected_columns <- c("Lymphocytes", "Single Cells", "Live", "CD3+")
+  # This could be related to the celltypes given initially
+  selected_columns = c("Lymphocytes", "Single Cells", "Live", "CD3+")
   
-  # Ensure the gatingResult contains the selected columns
-  # Placeholder for the actual matrix with these columns
-  # Assuming here that the matrix should have these columns
-  gatingResult$matrix <- matrix(data = c(TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE), 
-                                nrow = 4, ncol = 4)
-  colnames(gatingResult$matrix) <- selected_columns
-  
-  # Subset the matrix to include only the specified columns
-  subset_matrix <- gatingResult$matrix[, selected_columns, drop = FALSE]
-  
-  # Write the subset to a CSV file
-  subset_file <- "path/to/cellpopulation_subset.csv"
-  write.csv(subset_matrix, subset_file, row.names = FALSE)
+  # Loop over each element in gatingResult and extract the matrix and save the subset
+  for (i in names(gatingResult)) {
+    # Extract the matrix
+    subset_matrix = gatingResult[[i]]$matrix[, selected_columns, drop=FALSE]
+    i = gsub("\\.fcs$", "", i)
+    
+    # Give the output folder
+    output_folder = sprintf("/path/to/%s.csv", i)
+    
+    # Extract the directory path from output_folder
+    dir_path = dirname(output_folder)
+    
+    # Create the directory if it does not exist
+    if (!dir.exists(dir_path)) {
+      dir.create(dir_path, recursive = TRUE)
+    }
+    
+    # Write the CSV file
+    write.csv(subset_matrix, file = output_folder, row.names = FALSE)
+  }
 }
 
-# Call the function with the defined paths
-csvlabels(wspfile, fcs_files)
